@@ -35,7 +35,7 @@ else
     COWRIE_CFG="$COWRIE_DIR/etc/cowrie.cfg"
 fi
 
-NEW_HOSTNAME="pi-sensor-gateway"
+NEW_HOSTNAME="raspberrypi"
 SSH_BANNER="SSH-2.0-OpenSSH_8.4p1 Debian-5+deb11u1"
 
 echo "[*] Starting Cowrie Deception Setup v4..."
@@ -90,20 +90,29 @@ EOF
 echo "pi-sensor-gateway" > "$COWRIE_DIR/honeyfs/etc/hostname"
 
 cat << 'EOF' > "$COWRIE_DIR/honeyfs/etc/hosts"
-127.0.0.1       localhost
-127.0.1.1       pi-sensor-gateway
-10.1.10.20      node-alpha.sensor.local     node-alpha
-10.1.10.21      node-beta.sensor.local      node-beta
-10.1.10.22      node-gamma.sensor.local     node-gamma
-10.1.10.1       gateway.sensor.local        gateway
+# Your system has configured 'manage_etc_hosts' as True.
+# As a result, if you wish for changes to this file to persist
+# then you will need to either
+# a.) make changes to the master file in /etc/cloud/templates/hosts.debian.tmpl
+# b.) change or remove the value of 'manage_etc_hosts' in
+#     /etc/cloud/cloud.cfg or cloud-config from user-data
+#
+127.0.1.1 raspberrypi raspberrypi
+127.0.0.1 localhost
+
+# The following lines are desirable for IPv6 capable hosts
+::1 localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
 EOF
 
 cat << 'EOF' > "$COWRIE_DIR/honeyfs/etc/os-release"
-PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
 NAME="Debian GNU/Linux"
-VERSION_ID="11"
-VERSION="11 (bullseye)"
-VERSION_CODENAME=bullseye
+VERSION_ID="13"
+VERSION="13 (trixie)"
+VERSION_CODENAME=trixie
+DEBIAN_VERSION_FULL=13.4
 ID=debian
 HOME_URL="https://www.debian.org/"
 SUPPORT_URL="https://www.debian.org/support"
@@ -139,55 +148,100 @@ EOF
 echo "[+] Writing /proc entries..."
 
 cat << 'EOF' > "$COWRIE_DIR/honeyfs/proc/cpuinfo"
-processor	: 0
-model name	: ARMv7 Processor rev 3 (v7l)
-BogoMIPS	: 108.00
-Features	: half thumb fastmult vfp edsp neon vfpv3 tls vfpv4 idiva idivt vfpd32 lpae evtstrm crc32
-CPU implementer	: 0x41
-CPU architecture: 7
-CPU variant	: 0x0
-CPU part	: 0xd08
-CPU revision	: 3
+processor       : 0
+BogoMIPS        : 108.00
+Features        : fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+CPU implementer : 0x41
+CPU architecture: 8
+CPU variant     : 0x4
+CPU part        : 0xd0b
+CPU revision    : 1
 
-processor	: 1
-model name	: ARMv7 Processor rev 3 (v7l)
-BogoMIPS	: 108.00
-Features	: half thumb fastmult vfp edsp neon vfpv3 tls vfpv4 idiva idivt vfpd32 lpae evtstrm crc32
-CPU implementer	: 0x41
-CPU architecture: 7
-CPU variant	: 0x0
-CPU part	: 0xd08
-CPU revision	: 3
+processor       : 1
+BogoMIPS        : 108.00
+Features        : fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+CPU implementer : 0x41
+CPU architecture: 8
+CPU variant     : 0x4
+CPU part        : 0xd0b
+CPU revision    : 1
 
-Hardware	: BCM2711
-Revision	: c03114
-Serial		: 10000000b1234567
-Model		: Raspberry Pi 4 Model B Rev 1.4
+processor       : 2
+BogoMIPS        : 108.00
+Features        : fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+CPU implementer : 0x41
+CPU architecture: 8
+CPU variant     : 0x4
+CPU part        : 0xd0b
+CPU revision    : 1
+
+processor       : 3
+BogoMIPS        : 108.00
+Features        : fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+CPU implementer : 0x41
+CPU architecture: 8
+CPU variant     : 0x4
+CPU part        : 0xd0b
+CPU revision    : 1
+
+Revision        : e04171
+Serial          : 394acb79c7ff9ea1
+Model           : Raspberry Pi 5 Model B Rev 1.1
 EOF
 
 cat << 'EOF' > "$COWRIE_DIR/honeyfs/proc/version"
-Linux version 5.15.84-v7l+ (dom@buildhost) (arm-linux-gnueabihf-gcc-8 (Ubuntu/Linaro 8.4.0-3ubuntu1) 8.4.0, GNU ld (GNU Binutils for Ubuntu) 2.34) #1613 SMP Thu Jan 5 12:01:26 GMT 2023
+Linux version 6.12.75+rpt-rpi-2712 (serge@raspberrypi.com) (aarch64-linux-gnu-gcc-14 (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 SMP PREEMPT Debian 1:6.12.75-1+rpt1 (2026-03-11)
 EOF
 
 cat << 'EOF' > "$COWRIE_DIR/honeyfs/proc/meminfo"
-MemTotal:        3884968 kB
-MemFree:          234156 kB
-MemAvailable:    1823456 kB
-Buffers:          124892 kB
-Cached:          1654320 kB
+MemTotal:       16608192 kB
+MemFree:        15828176 kB
+MemAvailable:   16218368 kB
+Buffers:           38560 kB
+Cached:           432464 kB
 SwapCached:            0 kB
-Active:          2341872 kB
-Inactive:         987654 kB
-SwapTotal:        102396 kB
-SwapFree:         102396 kB
+Active:           248528 kB
+Inactive:         286448 kB
+Active(anon):      76816 kB
+Inactive(anon):        0 kB
+Active(file):     171712 kB
+Inactive(file):   286448 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+SwapTotal:       2097136 kB
+SwapFree:        2097136 kB
+Zswap:                 0 kB
+Zswapped:              0 kB
+Dirty:                 0 kB
+Writeback:             0 kB
+AnonPages:         64144 kB
+Mapped:            44528 kB
+Shmem:             13152 kB
+KReclaimable:      36640 kB
+Slab:              80288 kB
+SReclaimable:      36640 kB
+SUnreclaim:        43648 kB
+KernelStack:        2912 kB
+PageTables:         3808 kB
+SecPageTables:       128 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:    10401232 kB
+Committed_AS:     137344 kB
+VmallocTotal:   68447887360 kB
+VmallocUsed:       65904 kB
+VmallocChunk:          0 kB
+Percpu:             1344 kB
+CmaTotal:          65536 kB
+CmaFree:           55296 kB
 EOF
 
 cat << 'EOF' > "$COWRIE_DIR/honeyfs/proc/net/arp"
 IP address       HW type     Flags       HW address            Mask     Device
-10.1.10.1        0x1         0x2         b8:27:eb:12:34:56     *        eth0
-10.1.10.21       0x1         0x2         b8:27:eb:ab:cd:ef     *        eth0
-10.1.10.22       0x1         0x2         b8:27:eb:98:76:54     *        eth0
-10.1.10.55       0x1         0x2         dc:a6:32:11:22:33     *        eth0
+10.4.27.50       0x1         0x2         5a:72:05:86:d5:b5     *        wlan0
+10.4.27.1        0x1         0x2         f4:1e:57:85:0b:06     *        wlan0
+10.4.27.34       0x1         0x2         f4:46:37:cb:66:b9     *        wlan0
 EOF
 
 # ==============================================================================
