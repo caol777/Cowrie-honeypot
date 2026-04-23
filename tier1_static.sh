@@ -13,35 +13,8 @@
 
 STATIC_RESPONSES = {
 
-    # --- Identity & Session ---
-    "whoami": "root",
-    "id": "uid=0(root) gid=0(root) groups=0(root)",
-    "pwd": "/root",
-    "hostname": "pi-sensor-gateway",
-    "hostname -f": "pi-sensor-gateway.sensor.local",
 
-    # --- OS / Kernel ---
-    "uname": "Linux",
-    "uname -a": "Linux pi-sensor-gateway 5.15.84-v7l+ #1613 SMP Thu Jan 5 12:01:26 GMT 2023 armv7l GNU/Linux",
-    "uname -r": "5.15.84-v7l+",
-    "uname -m": "armv7l",
-    "uname -s": "Linux",
-    "uname -n": "pi-sensor-gateway",
-    "arch": "armv7l",
 
-    # --- OS Release ---
-    "cat /etc/os-release": (
-        'PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"\n'
-        'NAME="Debian GNU/Linux"\n'
-        'VERSION_ID="11"\n'
-        'VERSION="11 (bullseye)"\n'
-        'VERSION_CODENAME=bullseye\n'
-        'ID=debian\n'
-        'HOME_URL="https://www.debian.org/"\n'
-        'SUPPORT_URL="https://www.debian.org/support"\n'
-        'BUG_REPORT_URL="https://bugs.debian.org/"'
-    ),
-    "cat /etc/debian_version": "11.6",
     "lsb_release -a": (
         "No LSB modules are available.\n"
         "Distributor ID: Debian\n"
@@ -50,66 +23,7 @@ STATIC_RESPONSES = {
         "Codename:       bullseye"
     ),
 
-    # --- Hardware ---
-    "cat /proc/cpuinfo": (
-        "processor\t: 0\n"
-        "model name\t: ARMv7 Processor rev 3 (v7l)\n"
-        "BogoMIPS\t: 108.00\n"
-        "Features\t: half thumb fastmult vfp edsp neon vfpv3 tls vfpv4 idiva idivt vfpd32 lpae evtstrm crc32\n"
-        "CPU implementer\t: 0x41\n"
-        "CPU architecture: 7\n"
-        "CPU variant\t: 0x0\n"
-        "CPU part\t: 0xd08\n"
-        "CPU revision\t: 3\n\n"
-        "processor\t: 1\n"
-        "model name\t: ARMv7 Processor rev 3 (v7l)\n"
-        "BogoMIPS\t: 108.00\n"
-        "Features\t: half thumb fastmult vfp edsp neon vfpv3 tls vfpv4 idiva idivt vfpd32 lpae evtstrm crc32\n"
-        "CPU implementer\t: 0x41\n"
-        "CPU architecture: 7\n"
-        "CPU variant\t: 0x0\n"
-        "CPU part\t: 0xd08\n"
-        "CPU revision\t: 3\n\n"
-        "Hardware\t: BCM2711\n"
-        "Revision\t: c03114\n"
-        "Serial\t\t: 10000000b1234567\n"
-        "Model\t\t: Raspberry Pi 4 Model B Rev 1.4"
-    ),
-    "cat /proc/version": (
-        "Linux version 5.15.84-v7l+ (dom@buildhost) "
-        "(arm-linux-gnueabihf-gcc-8 (Ubuntu/Linaro 8.4.0-3ubuntu1) 8.4.0, "
-        "GNU ld (GNU Binutils for Ubuntu) 2.34) "
-        "#1613 SMP Thu Jan 5 12:01:26 GMT 2023"
-    ),
 
-    # --- Memory ---
-    "cat /proc/meminfo": (
-        "MemTotal:        3884968 kB\n"
-        "MemFree:          234156 kB\n"
-        "MemAvailable:    1823456 kB\n"
-        "Buffers:          124892 kB\n"
-        "Cached:          1654320 kB\n"
-        "SwapCached:            0 kB\n"
-        "Active:          2341872 kB\n"
-        "Inactive:         987654 kB\n"
-        "SwapTotal:        102396 kB\n"
-        "SwapFree:         102396 kB"
-    ),
-    "free": (
-        "              total        used        free      shared  buff/cache   available\n"
-        "Mem:        3884968     1823456      234156       45892     1827356     1756234\n"
-        "Swap:        102396           0      102396"
-    ),
-    "free -m": (
-        "              total        used        free      shared  buff/cache   available\n"
-        "Mem:           3793        1780         228          44        1784        1715\n"
-        "Swap:            99           0          99"
-    ),
-    "free -h": (
-        "              total        used        free      shared  buff/cache   available\n"
-        "Mem:           3.7G        1.7G        228M         44M        1.7G        1.7G\n"
-        "Swap:           99M          0B         99M"
-    ),
 
     # --- Disk ---
     "df": (
