@@ -18,8 +18,14 @@
 import shlex
 import time
 
-import tier3_ollama_tier4_cloud as _slm
-import system_facts as sf
+try:
+    # Loaded inside Cowrie — helpers live in cowrie.llm.
+    from cowrie.llm import tier3_ollama_tier4_cloud as _slm
+    from cowrie.llm import system_facts as sf
+except ImportError:
+    # Standalone dev/testing — they're siblings on sys.path.
+    import tier3_ollama_tier4_cloud as _slm
+    import system_facts as sf
 
 
 # ==============================================================================
