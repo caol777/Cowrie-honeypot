@@ -148,8 +148,11 @@ def _handle_ls(argv: list[str]) -> tuple[bool, str]:
 # ==============================================================================
 
 def _systemctl_active(svc: str) -> str:
+    # ASCII-only output — some Cowrie versions drop Unicode (●/○/└─) on the
+    # write path, leaving the attacker with a blank line. Real systemctl uses
+    # the same ASCII fallback (`*`, `L-`) when the terminal isn't UTF-8.
     return (
-        f"● {svc}.service - {svc.capitalize()} Service\n"
+        f"* {svc}.service - {svc.capitalize()} Service\n"
         f"     Loaded: loaded (/lib/systemd/system/{svc}.service; enabled; preset: enabled)\n"
         "     Active: active (running) since Sun 2026-04-20 11:52:03 EDT; 3 days ago\n"
         f"   Main PID: 1284 ({svc})\n"
@@ -157,13 +160,13 @@ def _systemctl_active(svc: str) -> str:
         "     Memory: 12.3M\n"
         "        CPU: 1.284s\n"
         f"     CGroup: /system.slice/{svc}.service\n"
-        f"             └─1284 /usr/sbin/{svc}"
+        f"             `-1284 /usr/sbin/{svc}"
     )
 
 
 def _systemctl_inactive(svc: str) -> str:
     return (
-        f"○ {svc}.service - {svc.capitalize()} Service\n"
+        f"* {svc}.service - {svc.capitalize()} Service\n"
         f"     Loaded: loaded (/lib/systemd/system/{svc}.service; disabled; preset: enabled)\n"
         "     Active: inactive (dead)"
     )
