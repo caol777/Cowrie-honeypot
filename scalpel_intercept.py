@@ -20,9 +20,10 @@ from datetime import datetime
 from threading import Lock
 
 
-# Running log of attacker commands for `history` — bounded so it can't grow
-# unbounded. Kept per-process; for a single-attacker gauntlet this is
-# equivalent to per-session.
+# ==============================================================================
+# Attacker session history — powers the dynamic `history` command
+# ==============================================================================
+
 _SESSION_HISTORY: deque = deque(maxlen=1000)
 _SESSION_HISTORY_LOCK = Lock()
 
@@ -43,6 +44,10 @@ def _render_history(limit: int = 100) -> str:
         return ""
     return "\n".join(f"{i + 1:>5}  {cmd}" for i, cmd in enumerate(entries))
 
+
+# ==============================================================================
+# Tier imports
+# ==============================================================================
 
 try:
     from cowrie.llm import tier1_static as T1
@@ -130,7 +135,7 @@ metrics = MetricsTracker()
 
 
 # ==============================================================================
-# Core routing
+# Core routing — runs in a background thread (deferToThread)
 # ==============================================================================
 
 def route_command(command: str) -> tuple[str, int]:
@@ -141,6 +146,7 @@ def route_command(command: str) -> tuple[str, int]:
 
     start = time.time()
 
+    # Dynamic `history` — attacker sees the actual commands they typed.
     stripped = command.strip()
     if stripped == "history" or stripped.startswith("history "):
         limit = 100
@@ -175,29 +181,22 @@ def route_command(command: str) -> tuple[str, int]:
 
 
 # ==============================================================================
-# Cowrie integration
+# Cowrie integration — async (deferToThread) with all safety guards
 # ==============================================================================
 
 try:
     from cowrie.shell.command import HoneyPotCommand
+    from twisted.internet.threads import deferToThread
     from twisted.python import log as twisted_log
 
     class Command_scalpel_intercept(HoneyPotCommand):
-        """Catch-all Cowrie command handler.
+        """Catch-all Cowrie command handler. Async via deferToThread so slow
+        tiers (Ollama, Bedrock) don't block the reactor. Safety wrappers keep
+        any internal error from ever disconnecting the attacker's session."""
 
-        Cowrie's HoneyPotCommand doesn't receive the command name on init — only
-        args. The patched getCommand uses make_intercept_class(cmd_name) to
-        build a fresh subclass per command with _cmd_name baked in, so call()
-        can reconstruct the full command line.
-        """
-
-        _cmd_name = ""  # overridden by the factory
+        _cmd_name = ""  # overridden by make_intercept_class factory
 
         def call(self):
-            # Synchronous path: write output before exit() so Cowrie's shell
-            # redraws the prompt only after our response is flushed. Everything
-            # wrapped in try/except: an unhandled exception here would
-            # disconnect the attacker's SSH session.
             try:
                 name = getattr(self, "_cmd_name", "") or ""
                 args = [str(a) for a in (self.args or [])]
@@ -211,22 +210,35 @@ try:
                 self._safe_exit()
                 return
 
+            def _done(result):
+                try:
+                    response, _tier = result
+                    if response:
+                        self._safe_write(response + "\r\n")
+                except Exception as e:
+                    twisted_log.msg(f"[SCALPEL] _done error: {e!r}")
+                self._safe_exit()
+
+            def _fail(err):
+                twisted_log.msg(
+                    f"[SCALPEL] route_command failed for {command!r}: "
+                    f"{err.getErrorMessage()}"
+                )
+                self._safe_exit()
+
             try:
-                response, _tier = route_command(command)
+                d = deferToThread(route_command, command)
+                d.addCallbacks(_done, _fail)
             except Exception as e:
-                twisted_log.msg(f"[SCALPEL] route_command crashed for {command!r}: {e!r}")
-                response = ""
-
-            if response:
-                self._safe_write(response + "\r\n")
-
-            self._safe_exit()
+                twisted_log.msg(f"[SCALPEL] deferToThread failed: {e!r}")
+                self._safe_exit()
 
         def _safe_write(self, text: str) -> None:
             data = text.replace("\r\n", "\n").replace("\n", "\r\n")
             try:
                 self.write(data)
             except TypeError:
+                # Older Cowrie versions: HoneyPotCommand.write takes bytes.
                 try:
                     self.write(data.encode("utf-8", "replace"))
                 except Exception as e:
@@ -235,23 +247,23 @@ try:
                 twisted_log.msg(f"[SCALPEL] write failed: {e!r}")
 
         def _safe_exit(self) -> None:
-            # Some Cowrie versions auto-call exit() after call() returns; if we
-            # also called exit() inside call(), the second call raises
-            # ValueError('list.remove(x): x not in list'). Guard with a flag.
+            # Guard against double-exit. Cowrie auto-calls exit() after
+            # call() returns in some versions; if we also call it inside
+            # _done/_fail, the second one raises
+            # ValueError('list.remove(x): x not in list').
             if getattr(self, "_scalpel_exited", False):
                 return
             self._scalpel_exited = True
             try:
                 self.exit()
             except ValueError:
-                # already removed from the command list — harmless
-                pass
+                pass  # already removed from command list — harmless
             except Exception as e:
                 twisted_log.msg(f"[SCALPEL] exit failed: {e!r}")
 
     def make_intercept_class(cmd_name: str):
         """Return a fresh subclass with cmd_name baked into _cmd_name.
-        Called by the patched getCommand in cowrie/shell/protocol.py."""
+        Called per-command by the patched getCommand in cowrie/shell/protocol.py."""
         return type(
             "Command_scalpel_intercept_dyn",
             (Command_scalpel_intercept,),
@@ -266,7 +278,7 @@ except ImportError:
 
 
 # ==============================================================================
-# Startup helpers — used by standalone smoke tests
+# Standalone startup / smoke test
 # ==============================================================================
 
 def startup():
