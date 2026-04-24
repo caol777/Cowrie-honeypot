@@ -43,6 +43,7 @@ def _render_history(limit: int = 100) -> str:
         return ""
     return "\n".join(f"{i + 1:>5}  {cmd}" for i, cmd in enumerate(entries))
 
+
 try:
     from cowrie.llm import tier1_static as T1
     from cowrie.llm import tier2_classifier as T2
@@ -136,17 +137,12 @@ def route_command(command: str) -> tuple[str, int]:
     if not TIERS_LOADED:
         return "", 0
 
-    # Record every attacker command (except `history` itself) so the next
-    # `history` call shows what they actually typed this session.
     _record_session_command(command)
 
     start = time.time()
 
-    # Intercept `history` before Tier 1 so the response is dynamic, not the
-    # hand-rolled static list in tier1_static.py.
     stripped = command.strip()
     if stripped == "history" or stripped.startswith("history "):
-        # Parse optional count argument: `history 20` shows last 20.
         limit = 100
         parts = stripped.split()
         if len(parts) == 2 and parts[1].isdigit():
@@ -184,7 +180,6 @@ def route_command(command: str) -> tuple[str, int]:
 
 try:
     from cowrie.shell.command import HoneyPotCommand
-    from twisted.internet.threads import deferToThread
     from twisted.python import log as twisted_log
 
     class Command_scalpel_intercept(HoneyPotCommand):
@@ -199,10 +194,10 @@ try:
         _cmd_name = ""  # overridden by the factory
 
         def call(self):
-            # Synchronous path: write output *before* exit() so Cowrie's shell
-            # redraws the prompt only after our response is flushed. Using
-            # deferToThread races the prompt and lets the attacker type into
-            # a blank line, breaking immersion.
+            # Synchronous path: write output before exit() so Cowrie's shell
+            # redraws the prompt only after our response is flushed. Everything
+            # wrapped in try/except: an unhandled exception here would
+            # disconnect the attacker's SSH session.
             try:
                 name = getattr(self, "_cmd_name", "") or ""
                 args = [str(a) for a in (self.args or [])]
@@ -232,7 +227,6 @@ try:
             try:
                 self.write(data)
             except TypeError:
-                # Some Cowrie versions' HoneyPotCommand.write requires bytes.
                 try:
                     self.write(data.encode("utf-8", "replace"))
                 except Exception as e:
@@ -241,8 +235,17 @@ try:
                 twisted_log.msg(f"[SCALPEL] write failed: {e!r}")
 
         def _safe_exit(self) -> None:
+            # Some Cowrie versions auto-call exit() after call() returns; if we
+            # also called exit() inside call(), the second call raises
+            # ValueError('list.remove(x): x not in list'). Guard with a flag.
+            if getattr(self, "_scalpel_exited", False):
+                return
+            self._scalpel_exited = True
             try:
                 self.exit()
+            except ValueError:
+                # already removed from the command list — harmless
+                pass
             except Exception as e:
                 twisted_log.msg(f"[SCALPEL] exit failed: {e!r}")
 
@@ -280,7 +283,7 @@ def startup():
     else:
         print("[SCALPEL] WARNING: tier modules not loaded — passthrough mode")
 
-rt
+
 if __name__ == "__main__":
     startup()
     print()
@@ -289,14 +292,11 @@ if __name__ == "__main__":
         "uname -a",
         "cat /etc/passwd",
         "ls /var/www/html",
-        "cat /var/www/html/config.php",
-        "cd /var/www/html",
-        "ls",
         "systemctl status apache2",
+        "history",
     ]
     for cmd in test_commands:
         print(f"\n[TEST] $ {cmd}")
         response, tier = route_command(cmd)
         print(f"[TIER {tier}] {response[:160] if response else '(empty)'}")
     print(metrics.summary())
-w
