@@ -228,9 +228,15 @@ try:
             self._safe_exit()
 
         def _safe_write(self, text: str) -> None:
+            data = text.replace("\r\n", "\n").replace("\n", "\r\n")
             try:
-                # Cowrie's terminal is raw — needs \r\n line endings.
-                self.write(text.replace("\r\n", "\n").replace("\n", "\r\n"))
+                self.write(data)
+            except TypeError:
+                # Some Cowrie versions' HoneyPotCommand.write requires bytes.
+                try:
+                    self.write(data.encode("utf-8", "replace"))
+                except Exception as e:
+                    twisted_log.msg(f"[SCALPEL] write (bytes fallback) failed: {e!r}")
             except Exception as e:
                 twisted_log.msg(f"[SCALPEL] write failed: {e!r}")
 
