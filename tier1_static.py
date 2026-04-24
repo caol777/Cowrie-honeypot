@@ -1214,21 +1214,9 @@ STATIC_RESPONSES = {
     ":": "",
 
     # --- History ---
-    "history": (
-        "    1  ls -la\n"
-        "    2  cd /var/www/html\n"
-        "    3  cat config.php\n"
-        "    4  systemctl status apache2\n"
-        f"    5  ping {IP_GATEWAY}\n"
-        f"    6  ssh admin@{IP_ADMIN}\n"
-        "    7  apt update\n"
-        "    8  systemctl restart mariadb\n"
-        "    9  tail -f /var/log/syslog\n"
-        "   10  df -h\n"
-        "   11  free -h\n"
-        "   12  crontab -l\n"
-        "   13  history"
-    ),
+    # `history` is intercepted dynamically in scalpel_intercept.route_command
+    # so the attacker sees the actual commands they just ran. Do NOT put a
+    # static history entry here — it would shadow the dynamic one.
 
     # --- PATH / shell info ---
     "echo $SHELL": USER_SHELL,
