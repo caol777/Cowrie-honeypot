@@ -15,7 +15,33 @@ import os
 import time
 import json
 import logging
+from collections import deque
 from datetime import datetime
+from threading import Lock
+
+
+# Running log of attacker commands for `history` — bounded so it can't grow
+# unbounded. Kept per-process; for a single-attacker gauntlet this is
+# equivalent to per-session.
+_SESSION_HISTORY: deque = deque(maxlen=1000)
+_SESSION_HISTORY_LOCK = Lock()
+
+
+def _record_session_command(command: str) -> None:
+    if not command:
+        return
+    if command.strip() == "history":
+        return
+    with _SESSION_HISTORY_LOCK:
+        _SESSION_HISTORY.append(command)
+
+
+def _render_history(limit: int = 100) -> str:
+    with _SESSION_HISTORY_LOCK:
+        entries = list(_SESSION_HISTORY)[-limit:]
+    if not entries:
+        return ""
+    return "\n".join(f"{i + 1:>5}  {cmd}" for i, cmd in enumerate(entries))
 
 try:
     from cowrie.llm import tier1_static as T1
@@ -110,7 +136,26 @@ def route_command(command: str) -> tuple[str, int]:
     if not TIERS_LOADED:
         return "", 0
 
+    # Record every attacker command (except `history` itself) so the next
+    # `history` call shows what they actually typed this session.
+    _record_session_command(command)
+
     start = time.time()
+
+    # Intercept `history` before Tier 1 so the response is dynamic, not the
+    # hand-rolled static list in tier1_static.py.
+    stripped = command.strip()
+    if stripped == "history" or stripped.startswith("history "):
+        # Parse optional count argument: `history 20` shows last 20.
+        limit = 100
+        parts = stripped.split()
+        if len(parts) == 2 and parts[1].isdigit():
+            limit = int(parts[1])
+        response = _render_history(limit)
+        latency_ms = (time.time() - start) * 1000
+        metrics.record(1, command, latency_ms)
+        log.info(f"[SCALPEL T1 history] cmd={command!r} latency={latency_ms:.1f}ms")
+        return response, 1
 
     found, response = T1.lookup(command)
     if found:
@@ -154,8 +199,10 @@ try:
         _cmd_name = ""  # overridden by the factory
 
         def call(self):
-            # Everything wrapped in try/except: an unhandled exception here
-            # disconnects the attacker's SSH session, which defeats the point.
+            # Synchronous path: write output *before* exit() so Cowrie's shell
+            # redraws the prompt only after our response is flushed. Using
+            # deferToThread races the prompt and lets the attacker type into
+            # a blank line, breaking immersion.
             try:
                 name = getattr(self, "_cmd_name", "") or ""
                 args = [str(a) for a in (self.args or [])]
@@ -169,28 +216,16 @@ try:
                 self._safe_exit()
                 return
 
-            def _done(result):
-                try:
-                    response, _tier = result
-                    if response:
-                        self._safe_write(response + "\r\n")
-                except Exception as e:
-                    twisted_log.msg(f"[SCALPEL] _done error: {e!r}")
-                self._safe_exit()
-
-            def _fail(err):
-                twisted_log.msg(
-                    f"[SCALPEL] route_command failed for {command!r}: "
-                    f"{err.getErrorMessage()}"
-                )
-                self._safe_exit()
-
             try:
-                d = deferToThread(route_command, command)
-                d.addCallbacks(_done, _fail)
+                response, _tier = route_command(command)
             except Exception as e:
-                twisted_log.msg(f"[SCALPEL] deferToThread failed: {e!r}")
-                self._safe_exit()
+                twisted_log.msg(f"[SCALPEL] route_command crashed for {command!r}: {e!r}")
+                response = ""
+
+            if response:
+                self._safe_write(response + "\r\n")
+
+            self._safe_exit()
 
         def _safe_write(self, text: str) -> None:
             try:
@@ -239,7 +274,7 @@ def startup():
     else:
         print("[SCALPEL] WARNING: tier modules not loaded — passthrough mode")
 
-
+rt
 if __name__ == "__main__":
     startup()
     print()
@@ -258,3 +293,4 @@ if __name__ == "__main__":
         response, tier = route_command(cmd)
         print(f"[TIER {tier}] {response[:160] if response else '(empty)'}")
     print(metrics.summary())
+w
