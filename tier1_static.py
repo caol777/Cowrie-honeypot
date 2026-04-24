@@ -15,15 +15,28 @@ import shlex
 import time
 from typing import Tuple
 
-from system_facts import (
-    HOSTNAME, FQDN, OS_PRETTY, OS_CODENAME, OS_VERSION_ID, DEBIAN_VERSION,
-    KERNEL_VERSION, KERNEL_BUILD, ARCH, PI_MODEL, PI_REVISION, PI_SERIAL,
-    RAM_KB, SSH_BANNER, IFACE, IP_SELF, MAC_SELF, NETMASK, BROADCAST,
-    IP_GATEWAY, MAC_GATEWAY, IP_NODE_BETA, MAC_NODE_BETA,
-    IP_NODE_GAMMA, MAC_NODE_GAMMA, IP_ADMIN, MAC_ADMIN,
-    DOMAIN, DNS_PRIMARY, DNS_SECONDARY, USER_NAME, USER_HOME, USER_SHELL,
-    UPTIME_SECONDS_AT_BAIT, TIMEZONE, MACHINE_ID, CPU_COUNT,
-)
+try:
+    # Loaded inside Cowrie: system_facts lives in the sibling cowrie.llm package.
+    from cowrie.llm.system_facts import (
+        HOSTNAME, FQDN, OS_PRETTY, OS_CODENAME, OS_VERSION_ID, DEBIAN_VERSION,
+        KERNEL_VERSION, KERNEL_BUILD, ARCH, PI_MODEL, PI_REVISION, PI_SERIAL,
+        RAM_KB, SSH_BANNER, IFACE, IP_SELF, MAC_SELF, NETMASK, BROADCAST,
+        IP_GATEWAY, MAC_GATEWAY, IP_NODE_BETA, MAC_NODE_BETA,
+        IP_NODE_GAMMA, MAC_NODE_GAMMA, IP_ADMIN, MAC_ADMIN,
+        DOMAIN, DNS_PRIMARY, DNS_SECONDARY, USER_NAME, USER_HOME, USER_SHELL,
+        UPTIME_SECONDS_AT_BAIT, TIMEZONE, MACHINE_ID, CPU_COUNT,
+    )
+except ImportError:
+    # Standalone dev/testing — system_facts.py is a sibling file on sys.path.
+    from system_facts import (
+        HOSTNAME, FQDN, OS_PRETTY, OS_CODENAME, OS_VERSION_ID, DEBIAN_VERSION,
+        KERNEL_VERSION, KERNEL_BUILD, ARCH, PI_MODEL, PI_REVISION, PI_SERIAL,
+        RAM_KB, SSH_BANNER, IFACE, IP_SELF, MAC_SELF, NETMASK, BROADCAST,
+        IP_GATEWAY, MAC_GATEWAY, IP_NODE_BETA, MAC_NODE_BETA,
+        IP_NODE_GAMMA, MAC_NODE_GAMMA, IP_ADMIN, MAC_ADMIN,
+        DOMAIN, DNS_PRIMARY, DNS_SECONDARY, USER_NAME, USER_HOME, USER_SHELL,
+        UPTIME_SECONDS_AT_BAIT, TIMEZONE, MACHINE_ID, CPU_COUNT,
+    )
 
 # ==============================================================================
 # Runtime identity — what the running system reports (differs from /etc/hostname).
